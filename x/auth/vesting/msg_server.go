@@ -52,6 +52,13 @@ func (s msgServer) CreateVestingAccount(goCtx context.Context, msg *types.MsgCre
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "account %s already exists", msg.ToAddress)
 	}
 
+	startTime := ctx.BlockTime().Unix()
+	if (msg.StartTime > 0) && (msg.StartTime < startTime) {
+		return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, " startTime[%d] < now[%d]", msg.StartTime, startTime)
+	}else if msg.StartTime > 0 {
+		startTime = msg.StartTime
+	}
+
 	baseAccount := authtypes.NewBaseAccountWithAddress(to)
 	baseAccount = ak.NewAccount(ctx, baseAccount).(*authtypes.BaseAccount)
 	baseVestingAccount := types.NewBaseVestingAccount(baseAccount, msg.Amount.Sort(), msg.EndTime)
@@ -60,7 +67,7 @@ func (s msgServer) CreateVestingAccount(goCtx context.Context, msg *types.MsgCre
 	if msg.Delayed {
 		vestingAccount = types.NewDelayedVestingAccountRaw(baseVestingAccount)
 	} else {
-		vestingAccount = types.NewContinuousVestingAccountRaw(baseVestingAccount, ctx.BlockTime().Unix())
+		vestingAccount = types.NewContinuousVestingAccountRaw(baseVestingAccount, startTime)
 	}
 
 	ak.SetAccount(ctx, vestingAccount)
